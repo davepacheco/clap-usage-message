@@ -1,0 +1,71 @@
+== clap bug?
+
+This program defines a clap command that does nothing.  You would run it like this:
+
+```
+$ cargo run -- one two
+...
+Cli { my_arg: None, command: One(OneSubcommands { command: Two }) }
+```
+
+If you forget the second subcommand, you get a useful usage message:
+
+```
+$ cargo run -- one 
+Usage: clap-message one [MY_ARG] <COMMAND>
+
+Commands:
+  two   
+  help  Print this message or the help of the given subcommand(s)
+
+Arguments:
+  [MY_ARG]  [env: MY_ARG=]
+
+Options:
+  -h, --help  Print help
+```
+
+If you forget the second subcommand _but also specify the optional environment variable `MY_ARG`_, you get an error message with a more abbreviated help message:
+
+```
+dap@zathras clap-bug $ MY_ARG= cargo run -- one
+error: 'clap-message one' requires a subcommand but one was not provided
+  [subcommands: two, help]
+
+Usage: clap-message one [MY_ARG] <COMMAND>
+
+For more information, try '--help'.
+```
+
+With this diff:
+
+```diff
+diff --git a/src/main.rs b/src/main.rs
+index f00b34f..959b3bf 100644
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -4,7 +4,7 @@ use clap::Subcommand;
+
+ #[derive(Debug, Clone, Parser)]
+ struct Cli {
+-    #[clap(env = "MY_ARG", global = true)]
++    #[clap(env = "MY_ARG")]
+     my_arg: Option<String>,
+
+     #[command(subcommand)]
+```
+
+you _don't_ get that error message in that case, even though logically we're still passing the same argument:
+
+```
+$ MY_ARG= cargo run -- one
+...
+Usage: clap-message one <COMMAND>
+
+Commands:
+  two   
+  help  Print this message or the help of the given subcommand(s)
+
+Options:
+  -h, --help  Print help
+```
